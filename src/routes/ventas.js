@@ -89,7 +89,7 @@ router.post('/', auth, async (req, res) => {
         .eq('id', item.producto_id);
     }
 
-    // 5. Generar DTE (llamada al mock FEL)
+    // 5. Generar DTE 
     const dte = await generarDTE(venta, total);
 
     res.status(201).json({
@@ -103,7 +103,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Llama al mock FEL y guarda el DTE en documentos_dte
+// Llama al FEL y guarda el DTE en documentos_dte
 async function generarDTE(venta, total) {
   try {
     const respuesta = await fetch(

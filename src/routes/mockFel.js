@@ -3,9 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 const router  = express.Router();
 
 // POST /api/mock-fel
-// Simula el Certificador FEL (INFILE / SAT Guatemala).
-// En produccion real: reemplazar este router por llamadas a la API de INFILE.
-// El resto del sistema NO necesita cambios.
+// Simula el Certificador FEL
+
 router.post('/', async (req, res) => {
   const { venta_id, total, secret } = req.body;
 

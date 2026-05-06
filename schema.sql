@@ -1,7 +1,6 @@
 -- ============================================================
 -- Schema SQL para Supabase - Sistema POS
--- Ejecutar en: Supabase → SQL Editor → New query → Run
--- Nombres de tablas y campos: espanol sin tildes
+-- Ejecutar en: Supabase 
 -- ============================================================
 
 -- Roles del sistema
