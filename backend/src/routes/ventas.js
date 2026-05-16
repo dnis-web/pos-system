@@ -199,3 +199,4 @@ router.get('/resumen-hoy', auth, async (req, res) => {
 });
 
 module.exports = router;
+module.exports._calcularTotales = calcularTotales;
