@@ -22,11 +22,11 @@ jobs:
 
       - name: 3. Instalar dependencias
         run: npm ci
-        working-directory: ./backend
+        working-directory: backend
 
       - name: 4. Correr pruebas
         run: npm test
-        working-directory: ./backend
+        working-directory: backend
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -35,4 +35,4 @@ jobs:
 
       - name: 5. Verificar que el servidor inicia
         run: node --check src/index.js
-        working-directory: ./backend
+        working-directory: backend
