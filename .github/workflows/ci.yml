@@ -1,0 +1,39 @@
+name: CI - Pipeline de Integracion
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 3. Instalar dependencias
+        run: npm ci
+        working-directory: backend
+
+      - name: 4. Correr pruebas
+        run: npm test
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          MOCK_FEL_SECRET: ${{ secrets.MOCK_FEL_SECRET }}
+
+      - name: 5. Verificar que el servidor inicia
+        run: node --check src/index.js
+        working-directory: backend
