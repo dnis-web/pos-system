@@ -19,14 +19,11 @@ jobs:
         with:
           node-version: 20
 
-
       - name: 3. Instalar dependencias
-        run: npm ci
-        working-directory: backend
+        run: cd backend && npm ci
 
       - name: 4. Correr pruebas
-        run: npm test
-        working-directory: backend
+        run: cd backend && npm test
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -34,5 +31,4 @@ jobs:
           MOCK_FEL_SECRET: ${{ secrets.MOCK_FEL_SECRET }}
 
       - name: 5. Verificar que el servidor inicia
-        run: node --check src/index.js
-        working-directory: backend
+        run: cd backend && node --check src/index.js
