@@ -105,7 +105,7 @@ function App() {
       return <PaginaVentas token={session?.access_token} />
     }
     if (page === "facturacion") {
-      return <section><h2>Facturación</h2><p>Conectando con backend...</p></section>
+      return <PaginaFacturacion token={session?.access_token} />
     }
     if (page === "reportes") {
       return <section><h2>Reportes</h2><p>Solo disponible para Admin</p></section>
@@ -240,6 +240,84 @@ function PaginaVentas({ token }) {
       setMensaje("❌ Error al registrar venta")
     }
   }
+
+  function PaginaFacturacion({ token }) {
+  const [ventas, setVentas] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [dte, setDte] = useState(null)
+  const [procesando, setProcesando] = useState(false)
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/api/ventas`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json()).then(data => {
+      setVentas(Array.isArray(data) ? data : [])
+      setCargando(false)
+    })
+  }, [token])
+
+  const emitirDTE = async (venta) => {
+    setProcesando(true)
+    setDte(null)
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/mock-fel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        numero_venta: venta.numero_venta,
+        total: venta.total,
+        nit_receptor: "CF",
+        nombre_receptor: "Consumidor Final"
+      })
+    })
+    const data = await res.json()
+    setProcesando(false)
+    if (data.uuid) setDte(data)
+    else setDte({ error: data.error || "Error al emitir DTE" })
+  }
+
+  if (cargando) return <section><h2>Facturación</h2><p>Cargando...</p></section>
+
+  return (
+    <section>
+      <h2>Facturación Electrónica (FEL)</h2>
+      {dte && (
+        <div style={{background: dte.error ? "#fee" : "#efe", padding: "12px", marginBottom: "16px", borderRadius: "8px"}}>
+          {dte.error ? (
+            <p style={{color: "red"}}>❌ {dte.error}</p>
+          ) : (
+            <>
+              <p>✅ DTE emitido correctamente</p>
+              <p><strong>UUID:</strong> {dte.uuid}</p>
+              <p><strong>Serie:</strong> {dte.serie}</p>
+              <p><strong>Número:</strong> {dte.numero}</p>
+              <p><strong>Estado:</strong> {dte.estado}</p>
+            </>
+          )}
+        </div>
+      )}
+      <table>
+        <thead>
+          <tr><th>Número</th><th>Fecha</th><th>Total</th><th>Método</th><th>DTE</th></tr>
+        </thead>
+        <tbody>
+          {ventas.map(v => (
+            <tr key={v.id}>
+              <td>{v.numero_venta}</td>
+              <td>{new Date(v.creado_en).toLocaleDateString()}</td>
+              <td>Q{v.total}</td>
+              <td>{v.metodo_pago}</td>
+              <td>
+                <button onClick={() => emitirDTE(v)} disabled={procesando}>
+                  {procesando ? "Procesando..." : "Emitir DTE"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )
+}
 
   return (
     <section>
