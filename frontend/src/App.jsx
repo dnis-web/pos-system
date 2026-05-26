@@ -1,38 +1,80 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { supabase } from "./lib/supabase"
 import "./App.css"
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [session, setSession] = useState(null)
+  const [usuario, setUsuario] = useState(null)
   const [page, setPage] = useState("dashboard")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [cargando, setCargando] = useState(true)
 
-  const products = [
-    { id: 1, name: "Mouse inalámbrico", stock: 15, min: 5, price: 85 },
-    { id: 2, name: "Teclado mecánico", stock: 8, min: 10, price: 250 },
-    { id: 3, name: "Monitor 24 pulgadas", stock: 5, min: 5, price: 950 },
-  ]
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) cargarUsuario(session.user.id)
+      setCargando(false)
+    })
 
-  const handleLogin = (e) => {
-    e.preventDefault()
-    setIsLoggedIn(true)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) cargarUsuario(session.user.id)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const cargarUsuario = async (userId) => {
+    const { data } = await supabase
+      .from("usuarios")
+      .select("nombre, rol")
+      .eq("id", userId)
+      .single()
+    if (data) setUsuario(data)
   }
 
-  if (!isLoggedIn) {
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setError("")
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setError("Credenciales incorrectas")
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setSession(null)
+    setUsuario(null)
+    setPage("dashboard")
+  }
+
+  const rol = usuario?.rol || "cajero"
+
+  const menuItems = [
+    { id: "dashboard", label: "Dashboard", roles: ["admin", "cajero", "bodeguero"] },
+    { id: "productos", label: "Productos", roles: ["admin", "bodeguero"] },
+    { id: "inventario", label: "Inventario", roles: ["admin", "bodeguero"] },
+    { id: "ventas", label: "Ventas", roles: ["admin", "cajero"] },
+    { id: "facturacion", label: "Facturación", roles: ["admin", "cajero"] },
+    { id: "reportes", label: "Reportes", roles: ["admin"] },
+  ]
+
+  if (cargando) return <div className="login-page"><p>Cargando...</p></div>
+
+  if (!session) {
     return (
       <div className="login-page">
         <div className="login-card">
           <h2>Inicio de sesión</h2>
           <p>Sistema POS con Inventario y Facturación</p>
-
           <form onSubmit={handleLogin}>
-            <label>Usuario</label>
-            <input type="text" placeholder="Ingrese su usuario" required />
-
+            <label>Correo</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com" required />
             <label>Contraseña</label>
-            <input type="password" placeholder="Ingrese su contraseña" required />
-
-            <button className="primary login-btn" type="submit">
-              Ingresar al sistema
-            </button>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Ingrese su contraseña" required />
+            {error && <p style={{color: "red"}}>{error}</p>}
+            <button className="primary login-btn" type="submit">Ingresar al sistema</button>
           </form>
         </div>
       </div>
@@ -53,177 +95,208 @@ function App() {
         </section>
       )
     }
-
     if (page === "productos") {
-      return (
-        <section>
-          <h2>Productos</h2>
-          <button className="primary">Agregar producto</button>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Producto</th>
-                <th>Stock</th>
-                <th>Precio</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tr key={p.id}>
-                  <td>PROD-{p.id}</td>
-                  <td>{p.name}</td>
-                  <td>{p.stock}</td>
-                  <td>Q {p.price}.00</td>
-                  <td><button>Editar</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )
+      return <PaginaProductos token={session?.access_token} />
     }
-
     if (page === "inventario") {
-      return (
-        <section>
-          <h2>Control de inventario</h2>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Producto</th>
-                <th>Stock actual</th>
-                <th>Stock mínimo</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tr key={p.id}>
-                  <td>PROD-{p.id}</td>
-                  <td>{p.name}</td>
-                  <td>{p.stock}</td>
-                  <td>{p.min}</td>
-                  <td>
-                    <span className={p.stock <= p.min ? "badge warning" : "badge ok"}>
-                      {p.stock <= p.min ? "Stock bajo" : "Disponible"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )
+      return <PaginaInventario token={session?.access_token} />
     }
-
-    if (page === "clientes") {
-      return (
-        <section>
-          <h2>Clientes registrados</h2>
-          <button className="primary">Agregar cliente</button>
-
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Teléfono</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>1</td><td>Juan Pérez</td><td>juan@gmail.com</td><td>5555-1234</td><td><button>Editar</button></td></tr>
-              <tr><td>2</td><td>Ana López</td><td>ana@gmail.com</td><td>4444-5678</td><td><button>Editar</button></td></tr>
-              <tr><td>3</td><td>Carlos Ruiz</td><td>carlos@gmail.com</td><td>3333-9876</td><td><button>Editar</button></td></tr>
-            </tbody>
-          </table>
-        </section>
-      )
-    }
-
     if (page === "ventas") {
-      return (
-        <section>
-          <h2>Ventas</h2>
-
-          <div className="form">
-            <input placeholder="Buscar producto" />
-            <input placeholder="Cantidad" type="number" />
-            <button className="primary">Agregar a venta</button>
-          </div>
-
-          <div className="ticket">
-            <h3>Resumen de venta</h3>
-            <p>Subtotal: Q 250.00</p>
-            <p>IVA: Q 30.00</p>
-            <h3>Total: Q 280.00</h3>
-            <button className="success">Finalizar venta</button>
-          </div>
-        </section>
-      )
+      return <PaginaVentas token={session?.access_token} />
     }
-
     if (page === "facturacion") {
-      return (
-        <section>
-          <h2>Facturación electrónica</h2>
-
-          <div className="ticket">
-            <h3>Factura No. FAC-00024</h3>
-            <p>Cliente: Juan Pérez</p>
-            <p>NIT: CF</p>
-            <p>Fecha: 07/05/2026</p>
-            <p>Producto: Teclado mecánico</p>
-            <h3>Total: Q 280.00</h3>
-            <button className="primary">Generar factura</button>
-          </div>
-        </section>
-      )
+      return <section><h2>Facturación</h2><p>Conectando con backend...</p></section>
     }
-
     if (page === "reportes") {
-      return (
-        <section>
-          <h2>Reportes</h2>
-
-          <div className="cards">
-            <div className="card"><h3>Ventas semanales</h3><p>Q 8,450.00</p></div>
-            <div className="card"><h3>Producto más vendido</h3><p>Teclado</p></div>
-            <div className="card"><h3>Clientes activos</h3><p>36</p></div>
-            <div className="card"><h3>Ingresos mensuales</h3><p>Q 24,900.00</p></div>
-          </div>
-        </section>
-      )
+      return <section><h2>Reportes</h2><p>Solo disponible para Admin</p></section>
     }
   }
+
+  function PaginaProductos({ token }) {
+  const [productos, setProductos] = useState([])
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/api/productos`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => { setProductos(data); setCargando(false) })
+      .catch(() => setCargando(false))
+  }, [token])
+
+  if (cargando) return <section><h2>Productos</h2><p>Cargando...</p></section>
+
+  return (
+    <section>
+      <h2>Productos</h2>
+      <table>
+        <thead>
+          <tr><th>Código</th><th>Nombre</th><th>Stock</th><th>Precio</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+          {productos.map(p => (
+            <tr key={p.id}>
+              <td>{p.codigo || `PROD-${p.id?.slice(0,6)}`}</td>
+              <td>{p.nombre}</td>
+              <td>{p.stock}</td>
+              <td>Q {p.precio_venta}</td>
+              <td><span className={p.activo ? "badge ok" : "badge warning"}>{p.activo ? "Activo" : "Inactivo"}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
+function PaginaInventario({ token }) {
+  const [productos, setProductos] = useState([])
+  const [alertas, setAlertas] = useState([])
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/api/productos`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json()).then(data => setProductos(Array.isArray(data) ? data : []))
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/productos/alertas`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json()).then(data => setAlertas(Array.isArray(data) ? data : []))
+  }, [token])
+
+  const idsAlerta = new Set(alertas.map(p => p.id))
+
+  return (
+    <section>
+      <h2>Control de Inventario</h2>
+      {alertas.length > 0 && (
+        <p style={{color: "red"}}>⚠️ {alertas.length} productos con stock bajo</p>
+      )}
+      <table>
+        <thead>
+          <tr><th>Producto</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+          {productos.map(p => (
+            <tr key={p.id}>
+              <td>{p.nombre}</td>
+              <td>{p.stock}</td>
+              <td>{p.stock_minimo}</td>
+              <td><span className={idsAlerta.has(p.id) ? "badge warning" : "badge ok"}>
+                {idsAlerta.has(p.id) ? "Stock bajo" : "Disponible"}
+              </span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
+function PaginaVentas({ token }) {
+  const [productos, setProductos] = useState([])
+  const [busqueda, setBusqueda] = useState("")
+  const [items, setItems] = useState([])
+  const [metodoPago, setMetodoPago] = useState("EFECTIVO")
+  const [mensaje, setMensaje] = useState("")
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/api/productos`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json()).then(data => setProductos(Array.isArray(data) ? data : []))
+  }, [token])
+
+  const productosFiltrados = productos.filter(p =>
+    p.nombre.toLowerCase().includes(busqueda.toLowerCase()) && p.activo
+  )
+
+  const agregarItem = (producto) => {
+    const existe = items.find(i => i.producto_id === producto.id)
+    if (existe) {
+      setItems(items.map(i => i.producto_id === producto.id ? {...i, cantidad: i.cantidad + 1} : i))
+    } else {
+      setItems([...items, { producto_id: producto.id, nombre: producto.nombre, precio_unitario: producto.precio_venta, cantidad: 1 }])
+    }
+    setBusqueda("")
+  }
+
+  const subtotal = items.reduce((acc, i) => acc + i.precio_unitario * i.cantidad, 0)
+  const iva = subtotal * 0.12
+  const total = subtotal + iva
+
+  const finalizarVenta = async () => {
+    if (items.length === 0) return
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ventas`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ items: items.map(i => ({producto_id: i.producto_id, cantidad: i.cantidad, precio_unitario: i.precio_unitario})), metodo_pago: metodoPago, descuento_pct: 0 })
+    })
+  const data = await res.json()
+  console.log('Respuesta venta:', data)
+  if (data.venta) {
+      setMensaje(`✅ Venta registrada #${data.venta.numero_venta}`)
+      setItems([])
+    } else {
+      setMensaje("❌ Error al registrar venta")
+    }
+  }
+
+  return (
+    <section>
+      <h2>Ventas</h2>
+      <input placeholder="Buscar producto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+      {busqueda && (
+        <ul style={{border: "1px solid #ccc", padding: "8px", listStyle: "none"}}>
+          {productosFiltrados.slice(0, 5).map(p => (
+            <li key={p.id} style={{cursor: "pointer", padding: "4px"}} onClick={() => agregarItem(p)}>
+              {p.nombre} — Q{p.precio_venta}
+            </li>
+          ))}
+        </ul>
+      )}
+      <table>
+        <thead><tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+        <tbody>
+          {items.map(i => (
+            <tr key={i.producto_id}>
+              <td>{i.nombre}</td>
+              <td>Q{i.precio_unitario}</td>
+              <td>{i.cantidad}</td>
+              <td>Q{(i.precio_unitario * i.cantidad).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="ticket">
+        <p>Subtotal: Q{subtotal.toFixed(2)}</p>
+        <p>IVA (12%): Q{iva.toFixed(2)}</p>
+        <h3>Total: Q{total.toFixed(2)}</h3>
+        <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}>
+        <option value="EFECTIVO">Efectivo</option>
+        <option value="TARJETA">Tarjeta</option>
+        <option value="TRANSFERENCIA">Transferencia</option>
+        </select>
+        <button className="success" onClick={finalizarVenta}>Finalizar venta</button>
+        {mensaje && <p>{mensaje}</p>}
+      </div>
+    </section>
+  )
+}
 
   return (
     <div className="app">
       <aside className="sidebar">
         <h1>POS</h1>
-
-        <button className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>Dashboard</button>
-        <button className={page === "productos" ? "active" : ""} onClick={() => setPage("productos")}>Productos</button>
-        <button className={page === "inventario" ? "active" : ""} onClick={() => setPage("inventario")}>Inventario</button>
-        <button className={page === "clientes" ? "active" : ""} onClick={() => setPage("clientes")}>Clientes</button>
-        <button className={page === "ventas" ? "active" : ""} onClick={() => setPage("ventas")}>Ventas</button>
-        <button className={page === "facturacion" ? "active" : ""} onClick={() => setPage("facturacion")}>Facturación</button>
-        <button className={page === "reportes" ? "active" : ""} onClick={() => setPage("reportes")}>Reportes</button>
-
-        <button className="logout" onClick={() => setIsLoggedIn(false)}>Cerrar sesión</button>
+        <p style={{fontSize: "12px", color: "#aaa"}}>{usuario?.nombre} ({rol})</p>
+        {menuItems.filter(m => m.roles.includes(rol)).map(m => (
+          <button key={m.id} className={page === m.id ? "active" : ""} onClick={() => setPage(m.id)}>
+            {m.label}
+          </button>
+        ))}
+        <button className="logout" onClick={handleLogout}>Cerrar sesión</button>
       </aside>
-
       <main className="content">
-        <header>
-          <h2>Sistema POS con Inventario y Facturación</h2>
-        </header>
-
+        <header><h2>Sistema POS con Inventario y Facturación</h2></header>
         {renderPage()}
       </main>
     </div>
