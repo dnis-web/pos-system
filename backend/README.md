@@ -56,3 +56,15 @@ npm run dev
 ## Variables de entorno
 
 **Backend (.env):**
+
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_KEY=
+MOCK_FEL_SECRET=
+FRONTEND_URL=
+PORT=4000
+
+**Frontend (.env):**
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_API_URL=
