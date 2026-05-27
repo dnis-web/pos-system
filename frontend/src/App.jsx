@@ -242,84 +242,6 @@ function PaginaVentas({ token }) {
     }
   }
 
-  function PaginaFacturacion({ token }) {
-  const [ventas, setVentas] = useState([])
-  const [cargando, setCargando] = useState(true)
-  const [dte, setDte] = useState(null)
-  const [procesando, setProcesando] = useState(false)
-
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/ventas`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(r => r.json()).then(data => {
-      setVentas(Array.isArray(data) ? data : [])
-      setCargando(false)
-    })
-  }, [token])
-
-  const emitirDTE = async (venta) => {
-    setProcesando(true)
-    setDte(null)
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/mock-fel`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        numero_venta: venta.numero_venta,
-        total: venta.total,
-        nit_receptor: "CF",
-        nombre_receptor: "Consumidor Final"
-      })
-    })
-    const data = await res.json()
-    setProcesando(false)
-    if (data.uuid) setDte(data)
-    else setDte({ error: data.error || "Error al emitir DTE" })
-  }
-
-  if (cargando) return <section><h2>Facturación</h2><p>Cargando...</p></section>
-
-  return (
-    <section>
-      <h2>Facturación Electrónica (FEL)</h2>
-      {dte && (
-        <div style={{background: dte.error ? "#fee" : "#efe", padding: "12px", marginBottom: "16px", borderRadius: "8px"}}>
-          {dte.error ? (
-            <p style={{color: "red"}}>❌ {dte.error}</p>
-          ) : (
-            <>
-              <p>✅ DTE emitido correctamente</p>
-              <p><strong>UUID:</strong> {dte.uuid}</p>
-              <p><strong>Serie:</strong> {dte.serie}</p>
-              <p><strong>Número:</strong> {dte.numero}</p>
-              <p><strong>Estado:</strong> {dte.estado}</p>
-            </>
-          )}
-        </div>
-      )}
-      <table>
-        <thead>
-          <tr><th>Número</th><th>Fecha</th><th>Total</th><th>Método</th><th>DTE</th></tr>
-        </thead>
-        <tbody>
-          {ventas.map(v => (
-            <tr key={v.id}>
-              <td>{v.numero_venta}</td>
-              <td>{new Date(v.creado_en).toLocaleDateString()}</td>
-              <td>Q{v.total}</td>
-              <td>{v.metodo_pago}</td>
-              <td>
-                <button onClick={() => emitirDTE(v)} disabled={procesando}>
-                  {procesando ? "Procesando..." : "Emitir DTE"}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
-  )
-}
-
   return (
     <section>
       <h2>Ventas</h2>
@@ -380,15 +302,17 @@ function PaginaFacturacion({ token }) {
   const emitirDTE = async (venta) => {
     setProcesando(true)
     setDte(null)
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/mock-fel`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        numero_venta: venta.numero_venta,
-        total: venta.total,
-        nit_receptor: "CF",
-        nombre_receptor: "Consumidor Final"
-      })
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/api/mock-fel`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "x-fel-secret": "pos-fel-secret-2026"
+    },
+    body: JSON.stringify({
+      venta_id: venta.id,
+      total: venta.total,
+      secret: "pos-fel-secret-2026"
+    })
     })
     const data = await res.json()
     setProcesando(false)
@@ -406,13 +330,23 @@ function PaginaFacturacion({ token }) {
           {dte.error ? (
             <p style={{color: "red"}}>❌ {dte.error}</p>
           ) : (
-            <>
-              <p>✅ DTE emitido correctamente</p>
-              <p><strong>UUID:</strong> {dte.uuid}</p>
-              <p><strong>Serie:</strong> {dte.serie}</p>
-              <p><strong>Número:</strong> {dte.numero}</p>
-              <p><strong>Estado:</strong> {dte.estado}</p>
-            </>
+          <>
+            <div style={{fontFamily: "monospace", background: "#fff", padding: "16px", border: "1px solid #ccc", borderRadius: "8px", maxWidth: "400px"}}>
+              <h3 style={{textAlign: "center", margin: "0 0 8px"}}>FERRETERÍA POS</h3>
+              <p style={{textAlign: "center", margin: "0 0 8px", fontSize: "12px"}}>NIT: 1234567-8</p>
+              <hr/>
+              <p><strong>Factura:</strong> {dte.numero}</p>
+              <p><strong>Serie:</strong> {dte.serie || "A"}</p>
+              <p style={{fontSize: "11px", wordBreak: "break-all"}}><strong>UUID:</strong> {dte.uuid}</p>
+              <p><strong>Fecha:</strong> {new Date().toLocaleDateString()}</p>
+              <p><strong>NIT Receptor:</strong> CF</p>
+              <p><strong>Nombre:</strong> Consumidor Final</p>
+              <hr/>
+              <p style={{fontSize: "18px", textAlign: "center"}}><strong>TOTAL: Q{dte.total}</strong></p>
+              <hr/>
+              <p style={{textAlign: "center", color: "green", fontWeight: "bold"}}>✅ {dte.estado} por SAT</p>
+            </div>
+          </>
           )}
         </div>
       )}
