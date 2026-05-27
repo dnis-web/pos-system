@@ -241,9 +241,20 @@ function PaginaFacturacion({ token }) {
   const [cargando, setCargando] = useState(true)
   const [dte, setDte] = useState(null)
   const [procesando, setProcesando] = useState(false)
-  useEffect(() => {
+useEffect(() => {
+    console.log('Token:', token)
+    console.log('API URL:', import.meta.env.VITE_API_URL)
     fetch(`${import.meta.env.VITE_API_URL}/api/ventas`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(data => { setVentas(Array.isArray(data) ? data : []); setCargando(false) })
+      .then(r => r.json())
+      .then(data => { 
+        console.log('Ventas data:', data)
+        setVentas(Array.isArray(data) ? data : [])
+        setCargando(false) 
+      })
+      .catch(err => {
+        console.log('Error:', err)
+        setCargando(false)
+      })
   }, [token])
   const emitirDTE = async (venta) => {
     setProcesando(true)
