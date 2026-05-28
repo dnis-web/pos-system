@@ -75,17 +75,7 @@ function App() {
   }
 
   const renderPage = () => {
-    if (page === "dashboard") return (
-      <section>
-        <h2>Dashboard</h2>
-        <div className="cards">
-          <div className="card"><h3>Ventas del día</h3><p>Q 1,850.00</p></div>
-          <div className="card"><h3>Productos</h3><p>128 registrados</p></div>
-          <div className="card"><h3>Stock bajo</h3><p>6 productos</p></div>
-          <div className="card"><h3>Facturas</h3><p>24 emitidas</p></div>
-        </div>
-      </section>
-    )
+if (page === "dashboard") return <PaginaDashboard token={session?.access_token} />
     if (page === "productos") return <PaginaProductos token={session?.access_token} />
     if (page === "inventario") return <PaginaInventario token={session?.access_token} />
     if (page === "ventas") return <PaginaVentas token={session?.access_token} />
@@ -304,6 +294,35 @@ useEffect(() => {
           ))}
         </tbody>
       </table>
+    </section>
+  )
+}
+
+function PaginaDashboard({ token }) {
+  const [resumen, setResumen] = useState({ total_ventas: 0, num_ventas: 0 })
+  const [numProductos, setNumProductos] = useState(0)
+  const [numAlertas, setNumAlertas] = useState(0)
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/api/ventas/resumen-hoy`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(data => setResumen(data))
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/productos`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(data => setNumProductos(Array.isArray(data) ? data.length : 0))
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/productos/alertas`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(data => setNumAlertas(Array.isArray(data) ? data.length : 0))
+  }, [token])
+
+  return (
+    <section>
+      <h2>Dashboard</h2>
+      <div className="cards">
+        <div className="card"><h3>Ventas del día</h3><p>Q {resumen.total_ventas?.toFixed(2) || "0.00"}</p></div>
+        <div className="card"><h3>Productos</h3><p>{numProductos} registrados</p></div>
+        <div className="card"><h3>Stock bajo</h3><p>{numAlertas} productos</p></div>
+        <div className="card"><h3>Ventas hoy</h3><p>{resumen.num_ventas || 0} realizadas</p></div>
+      </div>
     </section>
   )
 }
