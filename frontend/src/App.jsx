@@ -302,6 +302,7 @@ function PaginaDashboard({ token }) {
   const [resumen, setResumen] = useState({ total_ventas: 0, num_ventas: 0 })
   const [numProductos, setNumProductos] = useState(0)
   const [numAlertas, setNumAlertas] = useState(0)
+  const [totalVentas, setTotalVentas] = useState(0)
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/api/ventas/resumen-hoy`, { headers: { Authorization: `Bearer ${token}` } })
@@ -312,6 +313,15 @@ function PaginaDashboard({ token }) {
 
     fetch(`${import.meta.env.VITE_API_URL}/api/productos/alertas`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(data => setNumAlertas(Array.isArray(data) ? data.length : 0))
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/ventas`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(data => {
+        if (Array.isArray(data)) {
+          const total = data.reduce((acc, v) => acc + (v.total || 0), 0)
+          setTotalVentas(total)
+        }
+      })
+
   }, [token])
 
   return (
@@ -321,7 +331,7 @@ function PaginaDashboard({ token }) {
         <div className="card"><h3>Ventas del día</h3><p>Q {resumen.total_ventas?.toFixed(2) || "0.00"}</p></div>
         <div className="card"><h3>Productos</h3><p>{numProductos} registrados</p></div>
         <div className="card"><h3>Stock bajo</h3><p>{numAlertas} productos</p></div>
-        <div className="card"><h3>Ventas hoy</h3><p>{resumen.num_ventas || 0} realizadas</p></div>
+        <div className="card"><h3>Total ventas</h3><p>Q {totalVentas.toFixed(2)}</p></div>
       </div>
     </section>
   )
