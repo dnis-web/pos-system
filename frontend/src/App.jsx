@@ -202,13 +202,26 @@ function PaginaVentas({ token }) {
       )}
       <table>
         <thead><tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
-        <tbody>
-          {items.map(i => (
-            <tr key={i.producto_id}>
-              <td>{i.nombre}</td><td>Q{i.precio_unitario}</td><td>{i.cantidad}</td><td>Q{(i.precio_unitario * i.cantidad).toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
+      <tbody>
+        {items.map(i => (
+          <tr key={i.producto_id}>
+            <td>{i.nombre}</td>
+            <td>Q{i.precio_unitario}</td>
+            <td>
+              <input 
+                type="number" 
+                min="1" 
+                value={i.cantidad} 
+                onChange={e => setItems(items.map(item => 
+                  item.producto_id === i.producto_id ? {...item, cantidad: parseInt(e.target.value) || 1} : item
+                ))}
+                style={{width: "60px"}}
+              />
+            </td>
+            <td>Q{(i.precio_unitario * i.cantidad).toFixed(2)}</td>
+          </tr>
+        ))}
+      </tbody>
       </table>
       <div className="ticket">
         <p>Subtotal: Q{subtotal.toFixed(2)}</p>
@@ -312,7 +325,7 @@ function PaginaDashboard({ token }) {
       .then(r => r.json()).then(data => setNumProductos(Array.isArray(data) ? data.length : 0))
 
     fetch(`${import.meta.env.VITE_API_URL}/api/productos/alertas`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(data => setNumAlertas(Array.isArray(data) ? data.length : 0))
+      .then(r => r.json()).then(data => setNumAlertas(data.total || 0))
 
     fetch(`${import.meta.env.VITE_API_URL}/api/ventas`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(data => {
@@ -328,7 +341,7 @@ function PaginaDashboard({ token }) {
     <section>
       <h2>Dashboard</h2>
       <div className="cards">
-        <div className="card"><h3>Ventas del día</h3><p>Q {resumen.total_ventas?.toFixed(2) || "0.00"}</p></div>
+        <div className="card"><h3>Ventas del día</h3><p>Q {resumen.total?.toFixed(2) || "0.00"}</p></div>
         <div className="card"><h3>Productos</h3><p>{numProductos} registrados</p></div>
         <div className="card"><h3>Stock bajo</h3><p>{numAlertas} productos</p></div>
         <div className="card"><h3>Total ventas</h3><p>Q {totalVentas.toFixed(2)}</p></div>
